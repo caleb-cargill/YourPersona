@@ -3,28 +3,40 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 public static class HttpClientUtilities
 {
-    private static readonly HttpClient client = new HttpClient();
-
-    public static async Task<string> GetAsync(string requestUrl, string apiKey)
+    public static async Task<T> GetAsync<T>(this HttpClient client, string requestUrl)
     {
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         var response = await client.GetAsync(requestUrl);
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync();
+        var responseContent = await response.Content.ReadAsStringAsync();
+        return JsonConvert.DeserializeObject<T>(responseContent);
     }
 
-    public static async Task<string> PostAsync(string requestUrl, string apiKey, Dictionary<string, string> headers, string? body = "{}")
+    public static async Task<T> PostAsync<T>(this HttpClient client, string requestUrl, string? body = "{}")
     {
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-        foreach (var header in headers)
-            client.DefaultRequestHeaders.Add(header.Key, header.Value);
-        if (string.IsNullOrEmpty(body)) body = "{}";
-        var content = new StringContent(body, Encoding.UTF8, "application/json");
+        var content = GetRequestContent(body);
         var response = await client.PostAsync(requestUrl, content);
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync();
+        var responseContent = await response.Content.ReadAsStringAsync();
+        return JsonConvert.DeserializeObject<T>(responseContent);
     }
+
+    public static async Task<T> PatchAsync<T>(this HttpClient client, string requestUrl, string? body = "{}")
+    {
+        var content = GetRequestContent(body);
+        var response = await client.PatchAsync(requestUrl, content);
+        response.EnsureSuccessStatusCode();
+        var responseContent = await response.Content.ReadAsStringAsync();
+        return JsonConvert.DeserializeObject<T>(responseContent);
+    }
+
+    private static StringContent GetRequestContent(string? body = "{}")
+    {
+        if (string.IsNullOrEmpty(body)) body = "{}";
+        return new StringContent(body, Encoding.UTF8, "application/json");
+    }
+    
 }
